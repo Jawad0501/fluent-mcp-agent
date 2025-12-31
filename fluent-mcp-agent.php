@@ -202,6 +202,7 @@ function ability_to_tool( $ability ) {
  * Streaming proxy for Ollama
  */
 function ollama_proxy_chat(\WP_REST_Request $request, $model) {
+    
     // Ensure current user context is set for REST API
     if (!get_current_user_id()) {
         $current_user = wp_get_current_user();
@@ -259,7 +260,7 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             'model' => $model,
             'messages' => $messages,
             'stream' => true,
-            // 'tools' => $tools
+            'tools' => $tools
         ];
 
         $buffer = '';
@@ -360,7 +361,6 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
                 
                 if ($ability) {
                     $toolResult = $ability->execute($toolArgs);
-                    // ds($toolResult);
                 } else {
                     $toolResult = [
                         'error' => "Ability '$toolName' not found.",
