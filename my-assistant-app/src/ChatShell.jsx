@@ -3,12 +3,75 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { useDataStreamRuntime } from "@assistant-ui/react-data-stream";
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
-import { Settings, Menu, X, ChevronDown, Sparkles, MessageSquareText, Plus, Database, Brain, Layers, Search } from "lucide-react";
+import { Settings, Menu, X, ChevronDown, Sparkles, MessageSquareText, Plus, Database, Brain, Layers, Search, Moon, Sun } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmToolExecution } from "./ConfirmToolExecution";
 import { WaitUntilToolExecuted } from "./WaitUntilToolExecuted";
 
 export default function ChatShell() {
+  // Theme colors configuration
+  const theme = {
+    light: {
+      bg: '#ffffff',
+      bgSecondary: '#f9fafb',
+      bgTertiary: '#f3f4f6',
+      border: '#ececec',
+      borderSecondary: '#e5e7eb',
+      borderTertiary: '#d1d5db',
+      text: '#111827',
+      textSecondary: '#374151',
+      textTertiary: '#6b7280',
+      textMuted: '#9ca3af',
+      hover: '#f7f7f7',
+      primary: '#2271b1',
+      primaryHover: '#135e96',
+    },
+    dark: {
+      bg: '#1f2937',
+      bgSecondary: '#111827',
+      bgTertiary: '#374151',
+      border: '#374151',
+      borderSecondary: '#4b5563',
+      borderTertiary: '#6b7280',
+      text: '#f9fafb',
+      textSecondary: '#e5e7eb',
+      textTertiary: '#d1d5db',
+      textMuted: '#9ca3af',
+      hover: '#374151',
+      primary: '#5b8fd8',
+      primaryHover: '#4a7bc8',
+    }
+  };
+
+  // Dark Mode State with localStorage persistence
+  const [darkMode, setDarkMode] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fluentAgentDarkMode');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  const colors = darkMode ? theme.dark : theme.light;
+
+  // Set CSS variables for Thread component and save dark mode preference
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fluentAgentDarkMode', JSON.stringify(darkMode));
+      // Update CSS variables for Thread component
+      const root = document.documentElement;
+      root.style.setProperty('--background', colors.bg);
+      root.style.setProperty('--foreground', colors.text);
+      root.style.setProperty('--muted', colors.bgSecondary);
+      root.style.setProperty('--muted-foreground', colors.textMuted);
+      root.style.setProperty('--accent', colors.hover);
+      root.style.setProperty('--accent-foreground', colors.text);
+      root.style.setProperty('--border', colors.border);
+      root.style.setProperty('--input', colors.borderTertiary);
+      root.style.setProperty('--ring', colors.primary);
+    }
+  }, [darkMode, colors]);
+
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [settingsSidebarOpen, setSettingsSidebarOpen] = React.useState(false);
   
@@ -286,25 +349,29 @@ export default function ChatShell() {
   return (
     <TooltipProvider>
       <AssistantRuntimeProvider runtime={runtime}>
-        <div style={{
+        <div 
+          data-theme={darkMode ? 'dark' : 'light'}
+          style={{
             display: 'flex',
             height: 'calc(100vh - 32px)',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.bg,
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             overflow: 'hidden',
-            position: 'relative'
+            position: 'relative',
+            color: colors.text,
+            transition: 'background-color 0.3s ease, color 0.3s ease'
         }}>
         {/* Left Sidebar */}
         <div
         style={{
             width: sidebarOpen ? "272px" : "0",
             minWidth: sidebarOpen ? "272px" : "0",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.bg,
             transition: "all 0.3s ease",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            borderRight: "1px solid #ececec",
+            borderRight: `1px solid ${colors.border}`,
         }}
         >
         <div
@@ -321,9 +388,9 @@ export default function ChatShell() {
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.bg,
                 padding: "0 20px",
-                borderBottom: "1px solid #f0f0f0",
+                borderBottom: `1px solid ${colors.border}`,
                 height: "64px",
                 display: "flex",
                 alignItems: "center"
@@ -337,7 +404,7 @@ export default function ChatShell() {
                     fontWeight: 600,
                     fontSize: "14px",
                     letterSpacing: "0.04em",
-                    color: "#111827",
+                    color: colors.text,
                     textTransform: "uppercase",
                     }}
                 >
@@ -361,20 +428,20 @@ export default function ChatShell() {
                     style={{
                         padding: "16px",
                         marginBottom: "16px",
-                        backgroundColor: "#f9fafb",
+                        backgroundColor: colors.bgSecondary,
                         borderRadius: "8px",
-                        border: "1px solid #e5e7eb",
+                        border: `1px solid ${colors.borderSecondary}`,
                         display: "flex",
                         flexDirection: "column",
                         gap: "12px",
-                        color: "#6B7280",
+                        color: colors.textTertiary,
                         fontSize: "13px",
                         lineHeight: "1.6",
                     }}
                 >
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <MessageSquareText size={18} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-                    <div style={{ fontWeight: 600, color: "#111827" }}>
+                    <MessageSquareText size={18} style={{ color: colors.textMuted, flexShrink: 0 }} />
+                    <div style={{ fontWeight: 600, color: colors.text }}>
                         Welcome to Fluent Agent
                     </div>
                     </div>
@@ -402,18 +469,18 @@ export default function ChatShell() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.bg,
           overflow: 'hidden'
         }}>
           {/* Header */}
           <header style={{
             height: '64px',
-            borderBottom: '1px solid #ececec',
+            borderBottom: `1px solid ${colors.border}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '0 24px',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.bg,
             position: 'relative',
             zIndex: 1001
           }}>
@@ -433,10 +500,10 @@ export default function ChatShell() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'background-color 0.2s',
-                  color: '#565656',
+                  color: colors.textTertiary,
                   padding: 0
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f7f7'}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -449,26 +516,26 @@ export default function ChatShell() {
                     onClick={() => setProviderDropdownOpen(!providerDropdownOpen)}
                     style={{
                       padding: '8px 16px',
-                      border: '1px solid #d0d0d0',
+                      border: `1px solid ${colors.borderTertiary}`,
                       borderRadius: '8px',
-                      backgroundColor: '#ffffff',
+                      backgroundColor: colors.bg,
                       cursor: 'pointer',
                       fontSize: '14px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      color: '#2d2d2d',
+                      color: colors.text,
                       fontWeight: '500',
                       transition: 'all 0.2s',
                       minWidth: '120px'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f7f7f7';
-                      e.currentTarget.style.borderColor = '#b0b0b0';
+                      e.currentTarget.style.backgroundColor = colors.hover;
+                      e.currentTarget.style.borderColor = colors.borderSecondary;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#ffffff';
-                      e.currentTarget.style.borderColor = '#d0d0d0';
+                      e.currentTarget.style.backgroundColor = colors.bg;
+                      e.currentTarget.style.borderColor = colors.borderTertiary;
                     }}
                   >
                     <span style={{ flex: 1, textAlign: 'left' }}>
@@ -482,10 +549,10 @@ export default function ChatShell() {
                       top: 'calc(100% + 4px)',
                       left: 0,
                       minWidth: '160px',
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #d0d0d0',
+                      backgroundColor: colors.bg,
+                      border: `1px solid ${colors.borderTertiary}`,
                       borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                      boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
                       zIndex: 1000,
                       overflow: 'hidden'
                     }}>
@@ -497,14 +564,14 @@ export default function ChatShell() {
                             padding: '12px 16px',
                             cursor: 'pointer',
                             fontSize: '14px',
-                            color: '#2d2d2d',
-                            backgroundColor: selectedProvider === provider ? '#f0f0f0' : '#ffffff',
+                            color: colors.text,
+                            backgroundColor: selectedProvider === provider ? colors.hover : colors.bg,
                             transition: 'background-color 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f7f7'}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
                           onMouseLeave={(e) => {
                             if (selectedProvider !== provider) {
-                              e.currentTarget.style.backgroundColor = '#ffffff';
+                              e.currentTarget.style.backgroundColor = colors.bg;
                             }
                           }}
                         >
@@ -523,26 +590,26 @@ export default function ChatShell() {
                         onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                         style={{
                         padding: '8px 16px',
-                        border: '1px solid #d0d0d0',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '8px',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.bg,
                         cursor: 'pointer',
                         fontSize: '14px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        color: '#2d2d2d',
+                        color: colors.text,
                         fontWeight: '500',
                         transition: 'all 0.2s',
                         minWidth: '140px'
                         }}
                         onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f7f7f7';
-                        e.currentTarget.style.borderColor = '#b0b0b0';
+                        e.currentTarget.style.backgroundColor = colors.hover;
+                        e.currentTarget.style.borderColor = colors.borderSecondary;
                         }}
                         onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#ffffff';
-                        e.currentTarget.style.borderColor = '#d0d0d0';
+                        e.currentTarget.style.backgroundColor = colors.bg;
+                        e.currentTarget.style.borderColor = colors.borderTertiary;
                         }}
                     >
                         <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -556,10 +623,10 @@ export default function ChatShell() {
                         top: 'calc(100% + 4px)',
                         left: 0,
                         minWidth: '200px',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #d0d0d0',
+                        backgroundColor: colors.bg,
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
                         zIndex: 1000,
                         overflow: 'hidden',
                         maxHeight: '300px',
@@ -573,14 +640,14 @@ export default function ChatShell() {
                                 padding: '12px 16px',
                                 cursor: 'pointer',
                                 fontSize: '14px',
-                                color: '#2d2d2d',
-                                backgroundColor: selectedModel === model ? '#f0f0f0' : '#ffffff',
+                                color: colors.text,
+                                backgroundColor: selectedModel === model ? colors.hover : colors.bg,
                                 transition: 'background-color 0.2s'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f7f7'}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
                             onMouseLeave={(e) => {
                                 if (selectedModel !== model) {
-                                e.currentTarget.style.backgroundColor = '#ffffff';
+                                e.currentTarget.style.backgroundColor = colors.bg;
                                 }
                             }}
                             >
@@ -595,42 +662,89 @@ export default function ChatShell() {
              
             </div>
 
-            {/* Settings Button */}
-            <button
-              onClick={() => setSettingsSidebarOpen(!settingsSidebarOpen)}
-              style={{
-                width: '36px',
-                height: '36px',
-                border: 'none',
-                borderRadius: '6px',
-                backgroundColor: settingsSidebarOpen ? '#f7f7f7' : 'transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background-color 0.2s',
-                color: '#565656',
-                padding: 0
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f7f7'}
-              onMouseLeave={(e) => {
-                if (!settingsSidebarOpen) {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }
-              }}
-              title="Settings"
-            >
-              <Settings size={20} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background-color 0.2s',
+                  color: colors.textTertiary,
+                  padding: 0
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setSettingsSidebarOpen(!settingsSidebarOpen)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: settingsSidebarOpen ? colors.hover : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background-color 0.2s',
+                  color: colors.textTertiary,
+                  padding: 0
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
+                onMouseLeave={(e) => {
+                  if (!settingsSidebarOpen) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+                title="Settings"
+              >
+                <Settings size={20} />
+              </button>
+            </div>
           </header>
 
           {/* Chat Area */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.bg,
             position: 'relative'
           }}>
+            <style>{`
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .aui-thread-root,
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .aui-thread-viewport,
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .aui-thread-viewport-footer {
+                background-color: ${colors.bg} !important;
+                color: ${colors.text} !important;
+              }
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .aui-assistant-message-content,
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .aui-user-message-content {
+                color: ${colors.text} !important;
+              }
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .text-foreground {
+                color: ${colors.text} !important;
+              }
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .text-muted-foreground {
+                color: ${colors.textTertiary} !important;
+              }
+              [data-theme="${darkMode ? 'dark' : 'light'}"] .bg-background {
+                background-color: ${colors.bg} !important;
+              }
+            `}</style>
             <Thread welcomeMessage={null} />
           </div>
         </div>
@@ -640,12 +754,12 @@ export default function ChatShell() {
           style={{
             width: settingsSidebarOpen ? "320px" : "0",
             minWidth: settingsSidebarOpen ? "320px" : "0",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.bg,
             transition: "all 0.3s ease",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
-            borderLeft: "1px solid #ececec",
+            borderLeft: `1px solid ${colors.border}`,
           }}
         >
           <div
@@ -662,9 +776,9 @@ export default function ChatShell() {
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.bg,
                 padding: "0 20px",
-                borderBottom: "1px solid #f0f0f0",
+                borderBottom: `1px solid ${colors.border}`,
                 height: "64px",
                 display: "flex",
                 alignItems: "center",
@@ -678,7 +792,7 @@ export default function ChatShell() {
                   gap: "8px",
                   fontWeight: 600,
                   fontSize: "16px",
-                  color: "#111827",
+                  color: colors.text,
                 }}
               >
                 Settings
@@ -696,10 +810,10 @@ export default function ChatShell() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'background-color 0.2s',
-                  color: '#565656',
+                  color: colors.textTertiary,
                   padding: 0
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f7f7'}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.hover}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <X size={18} />
@@ -714,6 +828,63 @@ export default function ChatShell() {
                 padding: "20px",
               }}
             >
+              {/* Dark Mode Settings Section */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px',
+                  paddingBottom: '12px',
+                  borderBottom: `1px solid ${colors.borderSecondary}`
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: colors.text,
+                  }}>
+                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                    Dark Mode
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={darkMode}
+                      onChange={(e) => setDarkMode(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: darkMode ? colors.primary : '#8c8f94',
+                      transition: '.3s',
+                      borderRadius: '24px'
+                    }}></span>
+                    <span style={{
+                      position: 'absolute',
+                      content: '',
+                      height: '18px',
+                      width: '18px',
+                      left: darkMode ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      transition: '.3s',
+                      borderRadius: '50%'
+                    }}></span>
+                  </label>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: colors.textTertiary, lineHeight: '1.5' }}>
+                  Switch between light and dark mode for a more comfortable viewing experience.
+                </p>
+              </div>
+
               {/* Function Calling Settings Section */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{
@@ -722,7 +893,7 @@ export default function ChatShell() {
                   justifyContent: 'space-between',
                   marginBottom: '16px',
                   paddingBottom: '12px',
-                  borderBottom: '1px solid #e5e7eb'
+                  borderBottom: `1px solid ${colors.borderSecondary}`
                 }}>
                   <div style={{
                     display: 'flex',
@@ -730,7 +901,7 @@ export default function ChatShell() {
                     gap: '8px',
                     fontWeight: 600,
                     fontSize: '14px',
-                    color: '#111827',
+                    color: colors.text,
                   }}>
                     <Layers size={16} />
                     Function Calling
@@ -749,7 +920,7 @@ export default function ChatShell() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: functionCallingEnabled ? '#2271b1' : '#8c8f94',
+                      backgroundColor: functionCallingEnabled ? colors.primary : '#8c8f94',
                       transition: '.3s',
                       borderRadius: '24px'
                     }}></span>
@@ -766,7 +937,7 @@ export default function ChatShell() {
                     }}></span>
                   </label>
                 </div>
-                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: colors.textTertiary, lineHeight: '1.5' }}>
                   Enable function calling to allow the AI to use tools and abilities. When disabled, the AI will only respond with text.
                 </p>
               </div>
@@ -780,7 +951,7 @@ export default function ChatShell() {
                     justifyContent: 'space-between',
                     marginBottom: '12px',
                     paddingBottom: '12px',
-                    borderBottom: '1px solid #e5e7eb'
+                    borderBottom: `1px solid ${colors.borderSecondary}`
                   }}>
                     <div style={{
                       display: 'flex',
@@ -788,7 +959,7 @@ export default function ChatShell() {
                       gap: '8px',
                       fontWeight: 600,
                       fontSize: '14px',
-                      color: '#111827',
+                      color: colors.text,
                     }}>
                       <Brain size={16} />
                       Available Tools
@@ -799,15 +970,15 @@ export default function ChatShell() {
                         style={{
                           padding: '4px 8px',
                           fontSize: '11px',
-                          color: '#2271b1',
+                          color: colors.primary,
                           background: 'transparent',
-                          border: '1px solid #2271b1',
+                          border: `1px solid ${colors.primary}`,
                           borderRadius: '4px',
                           cursor: 'pointer',
                           fontWeight: 500
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f0f6fc';
+                          e.currentTarget.style.backgroundColor = darkMode ? colors.bgTertiary : '#f0f6fc';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = 'transparent';
@@ -820,15 +991,15 @@ export default function ChatShell() {
                         style={{
                           padding: '4px 8px',
                           fontSize: '11px',
-                          color: '#6b7280',
+                          color: colors.textTertiary,
                           background: 'transparent',
-                          border: '1px solid #d1d5db',
+                          border: `1px solid ${colors.borderTertiary}`,
                           borderRadius: '4px',
                           cursor: 'pointer',
                           fontWeight: 500
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                          e.currentTarget.style.backgroundColor = colors.hover;
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = 'transparent';
@@ -848,7 +1019,7 @@ export default function ChatShell() {
                         left: '12px',
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#9ca3af',
+                        color: colors.textMuted,
                         pointerEvents: 'none'
                       }}
                     />
@@ -860,14 +1031,16 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px 8px 36px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '13px',
                         outline: 'none',
-                        transition: 'border-color 0.2s'
+                        transition: 'border-color 0.2s',
+                        backgroundColor: colors.bg,
+                        color: colors.text
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     />
                   </div>
 
@@ -883,7 +1056,7 @@ export default function ChatShell() {
                         <div style={{
                           fontSize: '12px',
                           fontWeight: 500,
-                          color: '#374151'
+                          color: colors.textSecondary
                         }}>
                           Categories
                         </div>
@@ -893,15 +1066,15 @@ export default function ChatShell() {
                             style={{
                               padding: '2px 6px',
                               fontSize: '10px',
-                              color: '#2271b1',
+                              color: colors.primary,
                               background: 'transparent',
-                              border: '1px solid #2271b1',
+                              border: `1px solid ${colors.primary}`,
                               borderRadius: '3px',
                               cursor: 'pointer',
                               fontWeight: 500
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#f0f6fc';
+                              e.currentTarget.style.backgroundColor = darkMode ? colors.bgTertiary : '#f0f6fc';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = 'transparent';
@@ -914,15 +1087,15 @@ export default function ChatShell() {
                             style={{
                               padding: '2px 6px',
                               fontSize: '10px',
-                              color: '#6b7280',
+                              color: colors.textTertiary,
                               background: 'transparent',
-                              border: '1px solid #d1d5db',
+                              border: `1px solid ${colors.borderTertiary}`,
                               borderRadius: '3px',
                               cursor: 'pointer',
                               fontWeight: 500
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                              e.currentTarget.style.backgroundColor = colors.hover;
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = 'transparent';
@@ -946,9 +1119,9 @@ export default function ChatShell() {
                               style={{
                                 padding: '4px 10px',
                                 fontSize: '11px',
-                                color: isSelected ? '#ffffff' : '#374151',
-                                background: isSelected ? '#2271b1' : '#f3f4f6',
-                                border: `1px solid ${isSelected ? '#2271b1' : '#d1d5db'}`,
+                                color: isSelected ? '#ffffff' : colors.textSecondary,
+                                background: isSelected ? colors.primary : colors.bgTertiary,
+                                border: `1px solid ${isSelected ? colors.primary : colors.borderTertiary}`,
                                 borderRadius: '4px',
                                 cursor: 'pointer',
                                 fontWeight: 500,
@@ -956,12 +1129,12 @@ export default function ChatShell() {
                               }}
                               onMouseEnter={(e) => {
                                 if (!isSelected) {
-                                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                                  e.currentTarget.style.backgroundColor = colors.hover;
                                 }
                               }}
                               onMouseLeave={(e) => {
                                 if (!isSelected) {
-                                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                  e.currentTarget.style.backgroundColor = colors.bgTertiary;
                                 }
                               }}
                             >
@@ -976,9 +1149,10 @@ export default function ChatShell() {
                   <div style={{
                     height: '200px',
                     overflowY: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: `1px solid ${colors.borderSecondary}`,
                     borderRadius: '6px',
-                    padding: '8px'
+                    padding: '8px',
+                    backgroundColor: colors.bgSecondary
                   }}>
                     {(() => {
                       // Filter tools based on category and search query
@@ -1007,7 +1181,7 @@ export default function ChatShell() {
                           <div style={{
                             padding: '20px',
                             textAlign: 'center',
-                            color: '#6b7280',
+                            color: colors.textTertiary,
                             fontSize: '13px'
                           }}>
                             No tools found matching "{toolSearchQuery}"
@@ -1032,8 +1206,8 @@ export default function ChatShell() {
                             padding: '10px',
                             marginBottom: index < filteredTools.length - 1 ? '8px' : 0,
                             borderRadius: '4px',
-                            backgroundColor: isSelected ? '#f0f6fc' : '#ffffff',
-                            border: `1px solid ${isSelected ? '#2271b1' : '#e5e7eb'}`,
+                            backgroundColor: isSelected ? (darkMode ? colors.bgTertiary : '#f0f6fc') : colors.bg,
+                            border: `1px solid ${isSelected ? colors.primary : colors.borderSecondary}`,
                             transition: 'all 0.2s'
                           }}
                         >
@@ -1059,7 +1233,7 @@ export default function ChatShell() {
                               left: 0,
                               right: 0,
                               bottom: 0,
-                              backgroundColor: isSelected ? '#2271b1' : '#d1d5db',
+                              backgroundColor: isSelected ? colors.primary : colors.borderTertiary,
                               transition: '.2s',
                               borderRadius: '20px'
                             }}></span>
@@ -1078,14 +1252,14 @@ export default function ChatShell() {
                             <div style={{
                               fontWeight: 600,
                               fontSize: '13px',
-                              color: '#111827',
+                              color: colors.text,
                               marginBottom: '4px'
                             }}>
                               {toolName}
                             </div>
                             <div style={{
                               fontSize: '12px',
-                              color: '#6b7280',
+                              color: colors.textTertiary,
                               lineHeight: '1.4'
                             }}>
                               {toolDescription}
@@ -1096,7 +1270,7 @@ export default function ChatShell() {
                     });
                     })()}
                   </div>
-                  <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
+                  <p style={{ margin: '8px 0 0', fontSize: '11px', color: colors.textTertiary, lineHeight: '1.4' }}>
                     {(() => {
                       // Calculate filtered count based on both category and search
                       const filteredCount = fluentMcpAgent.abilities.filter(tool => {
@@ -1134,7 +1308,7 @@ export default function ChatShell() {
                   justifyContent: 'space-between',
                   marginBottom: '16px',
                   paddingBottom: '12px',
-                  borderBottom: '1px solid #e5e7eb'
+                  borderBottom: `1px solid ${colors.borderSecondary}`
                 }}>
                   <div style={{
                     display: 'flex',
@@ -1142,7 +1316,7 @@ export default function ChatShell() {
                     gap: '8px',
                     fontWeight: 600,
                     fontSize: '14px',
-                    color: '#111827',
+                    color: colors.text,
                   }}>
                     <Database size={16} />
                     RAG Configuration
@@ -1161,7 +1335,7 @@ export default function ChatShell() {
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      backgroundColor: ragSettings.enabled ? '#2271b1' : '#8c8f94',
+                      backgroundColor: ragSettings.enabled ? colors.primary : '#8c8f94',
                       transition: '.3s',
                       borderRadius: '24px'
                     }}></span>
@@ -1186,7 +1360,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Chunk Size
@@ -1198,15 +1372,17 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
-                        outline: 'none'
+                        outline: 'none',
+                        backgroundColor: colors.bg,
+                        color: colors.text
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     />
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: colors.textTertiary }}>
                       Number of tokens per chunk
                     </p>
                   </div>
@@ -1217,7 +1393,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Chunk Overlap
@@ -1229,15 +1405,17 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
-                        outline: 'none'
+                        outline: 'none',
+                        backgroundColor: colors.bg,
+                        color: colors.text
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     />
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: colors.textTertiary }}>
                       Overlapping tokens between chunks
                     </p>
                   </div>
@@ -1248,7 +1426,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Top K Results
@@ -1260,15 +1438,17 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
-                        outline: 'none'
+                        outline: 'none',
+                        backgroundColor: colors.bg,
+                        color: colors.text
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     />
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: colors.textTertiary }}>
                       Number of similar chunks to retrieve
                     </p>
                   </div>
@@ -1279,7 +1459,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Similarity Threshold
@@ -1294,15 +1474,17 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
-                        outline: 'none'
+                        outline: 'none',
+                        backgroundColor: colors.bg,
+                        color: colors.text
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     />
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: colors.textTertiary }}>
                       Minimum similarity score (0-1)
                     </p>
                   </div>
@@ -1313,7 +1495,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Embedding Model
@@ -1324,15 +1506,16 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
                         outline: 'none',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.bg,
+                        color: colors.text,
                         cursor: 'pointer'
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     >
                       <option value="text-embedding-ada-002">text-embedding-ada-002</option>
                       <option value="text-embedding-3-small">text-embedding-3-small</option>
@@ -1346,7 +1529,7 @@ export default function ChatShell() {
                       display: 'block',
                       fontSize: '13px',
                       fontWeight: 500,
-                      color: '#374151',
+                      color: colors.textSecondary,
                       marginBottom: '6px'
                     }}>
                       Vector Store
@@ -1357,15 +1540,16 @@ export default function ChatShell() {
                       style={{
                         width: '100%',
                         padding: '8px 12px',
-                        border: '1px solid #d1d5db',
+                        border: `1px solid ${colors.borderTertiary}`,
                         borderRadius: '6px',
                         fontSize: '14px',
                         outline: 'none',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.bg,
+                        color: colors.text,
                         cursor: 'pointer'
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
-                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                      onFocus={(e) => e.target.style.borderColor = colors.primary}
+                      onBlur={(e) => e.target.style.borderColor = colors.borderTertiary}
                     >
                       <option value="pinecone">Pinecone</option>
                       <option value="weaviate">Weaviate</option>
