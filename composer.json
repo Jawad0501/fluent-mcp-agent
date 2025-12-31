@@ -1,0 +1,11 @@
+{
+    "require": {
+        "wordpress/mcp-adapter": "^0.4.1",
+        "automattic/jetpack-autoloader": "^5.0"
+    },
+    "config": {
+        "allow-plugins": {
+            "automattic/jetpack-autoloader": true
+        }
+    }
+}
