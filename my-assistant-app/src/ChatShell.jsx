@@ -3,7 +3,7 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { useDataStreamRuntime } from "@assistant-ui/react-data-stream";
 import { Thread } from "@/components/assistant-ui/thread";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
-import { Settings, Menu, X, ChevronDown, Sparkles, MessageSquareText, Plus, Database, Brain, Layers } from "lucide-react";
+import { Settings, Menu, X, ChevronDown, Sparkles, MessageSquareText, Plus, Database, Brain, Layers, Search } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmToolExecution } from "./ConfirmToolExecution";
 import { WaitUntilToolExecuted } from "./WaitUntilToolExecuted";
@@ -51,6 +51,44 @@ export default function ChatShell() {
     }
     return new Set();
   });
+
+  // Tool Search State
+  const [toolSearchQuery, setToolSearchQuery] = React.useState('');
+
+  // Extract category from tool name
+  const getToolCategory = React.useCallback((toolName) => {
+    if (!toolName) return 'others';
+    const parts = toolName.split('/');
+    return parts.length > 1 ? parts[0] : 'others';
+  }, []);
+
+  // Get all available categories from tools
+  const getAvailableCategories = React.useMemo(() => {
+    if (typeof fluentMcpAgent === "undefined" || !fluentMcpAgent.abilities?.length) {
+      return [];
+    }
+    const categories = new Set();
+    fluentMcpAgent.abilities.forEach(tool => {
+      const toolName = tool.function?.name;
+      if (toolName) {
+        const category = toolName.includes('/') ? toolName.split('/')[0] : 'others';
+        categories.add(category);
+      }
+    });
+    return Array.from(categories).sort();
+  }, [typeof fluentMcpAgent !== "undefined" ? fluentMcpAgent.abilities?.length : 0]);
+
+  // Selected Categories State - initialize with all categories selected
+  const [selectedCategories, setSelectedCategories] = React.useState(() => {
+    return new Set(getAvailableCategories);
+  });
+
+  // Update selectedCategories when availableCategories change
+  React.useEffect(() => {
+    if (getAvailableCategories.length > 0) {
+      setSelectedCategories(new Set(getAvailableCategories));
+    }
+  }, [getAvailableCategories.length]);
 
   // RAG Settings State
   const [ragSettings, setRagSettings] = React.useState({
@@ -115,7 +153,22 @@ export default function ChatShell() {
         if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
           fluentMcpAgent.abilities.forEach(tool => {
             if (tool.function?.name && selectedTools.has(tool.function.name)) {
-              tools.push(tool);
+              // Ensure properties is an object, not an array
+              const normalizedTool = { ...tool };
+              if (normalizedTool.function?.parameters?.properties) {
+                const props = normalizedTool.function.parameters.properties;
+                // If properties is an array, convert it to an object
+                if (Array.isArray(props)) {
+                  normalizedTool.function.parameters.properties = {};
+                } else if (props && typeof props === 'object') {
+                  // Ensure it's a plain object, not an array-like object
+                  normalizedTool.function.parameters.properties = { ...props };
+                }
+              } else if (normalizedTool.function?.parameters && !normalizedTool.function.parameters.properties) {
+                // Ensure properties exists as an object
+                normalizedTool.function.parameters.properties = {};
+              }
+              tools.push(normalizedTool);
             }
           });
         }
@@ -208,6 +261,26 @@ export default function ChatShell() {
 
   const handleDeselectAllTools = () => {
     setSelectedTools(new Set());
+  };
+
+  const handleCategoryToggle = (category) => {
+    setSelectedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllCategories = () => {
+    setSelectedCategories(new Set(getAvailableCategories));
+  };
+
+  const handleDeselectAllCategories = () => {
+    setSelectedCategories(new Set());
   };
 
   return (
@@ -765,6 +838,141 @@ export default function ChatShell() {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Search Input */}
+                  <div style={{ marginBottom: '12px', position: 'relative' }}>
+                    <Search 
+                      size={16} 
+                      style={{
+                        position: 'absolute',
+                        left: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#9ca3af',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search tools..."
+                      value={toolSearchQuery}
+                      onChange={(e) => setToolSearchQuery(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 36px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        outline: 'none',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#2271b1'}
+                      onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                    />
+                  </div>
+
+                  {/* Category Filter */}
+                  {getAvailableCategories.length > 0 && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: 500,
+                          color: '#374151'
+                        }}>
+                          Categories
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={handleSelectAllCategories}
+                            style={{
+                              padding: '2px 6px',
+                              fontSize: '10px',
+                              color: '#2271b1',
+                              background: 'transparent',
+                              border: '1px solid #2271b1',
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f0f6fc';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            All
+                          </button>
+                          <button
+                            onClick={handleDeselectAllCategories}
+                            style={{
+                              padding: '2px 6px',
+                              fontSize: '10px',
+                              color: '#6b7280',
+                              background: 'transparent',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              fontWeight: 500
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            None
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px'
+                      }}>
+                        {getAvailableCategories.map(category => {
+                          const isSelected = selectedCategories.has(category);
+                          return (
+                            <button
+                              key={category}
+                              onClick={() => handleCategoryToggle(category)}
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                color: isSelected ? '#ffffff' : '#374151',
+                                background: isSelected ? '#2271b1' : '#f3f4f6',
+                                border: `1px solid ${isSelected ? '#2271b1' : '#d1d5db'}`,
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                }
+                              }}
+                            >
+                              {category}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{
                     height: '200px',
                     overflowY: 'auto',
@@ -772,12 +980,47 @@ export default function ChatShell() {
                     borderRadius: '6px',
                     padding: '8px'
                   }}>
-                    {fluentMcpAgent.abilities.map((tool, index) => {
-                      const toolName = tool.function?.name;
-                      const toolDescription = tool.function?.description || 'No description';
-                      const isSelected = toolName ? selectedTools.has(toolName) : false;
-                      
-                      if (!toolName) return null;
+                    {(() => {
+                      // Filter tools based on category and search query
+                      const filteredTools = fluentMcpAgent.abilities.filter(tool => {
+                        const toolName = tool.function?.name || '';
+                        const toolCategory = getToolCategory(toolName);
+                        
+                        // Category filter
+                        if (!selectedCategories.has(toolCategory)) {
+                          return false;
+                        }
+                        
+                        // Search filter
+                        if (toolSearchQuery.trim()) {
+                          const toolDescription = tool.function?.description || '';
+                          const searchLower = toolSearchQuery.toLowerCase();
+                          return toolName.toLowerCase().includes(searchLower) || 
+                                 toolDescription.toLowerCase().includes(searchLower);
+                        }
+                        
+                        return true;
+                      });
+
+                      if (filteredTools.length === 0) {
+                        return (
+                          <div style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            color: '#6b7280',
+                            fontSize: '13px'
+                          }}>
+                            No tools found matching "{toolSearchQuery}"
+                          </div>
+                        );
+                      }
+
+                      return filteredTools.map((tool, index) => {
+                        const toolName = tool.function?.name;
+                        const toolDescription = tool.function?.description || 'No description';
+                        const isSelected = toolName ? selectedTools.has(toolName) : false;
+                        
+                        if (!toolName) return null;
                       
                       return (
                         <div
@@ -787,7 +1030,7 @@ export default function ChatShell() {
                             alignItems: 'flex-start',
                             gap: '10px',
                             padding: '10px',
-                            marginBottom: index < fluentMcpAgent.abilities.length - 1 ? '8px' : 0,
+                            marginBottom: index < filteredTools.length - 1 ? '8px' : 0,
                             borderRadius: '4px',
                             backgroundColor: isSelected ? '#f0f6fc' : '#ffffff',
                             border: `1px solid ${isSelected ? '#2271b1' : '#e5e7eb'}`,
@@ -850,10 +1093,35 @@ export default function ChatShell() {
                           </div>
                         </div>
                       );
-                    })}
+                    });
+                    })()}
                   </div>
                   <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
-                    {selectedTools.size} of {fluentMcpAgent.abilities.length} tools selected
+                    {(() => {
+                      // Calculate filtered count based on both category and search
+                      const filteredCount = fluentMcpAgent.abilities.filter(tool => {
+                        const toolName = tool.function?.name || '';
+                        const toolCategory = getToolCategory(toolName);
+                        
+                        // Category filter
+                        if (!selectedCategories.has(toolCategory)) {
+                          return false;
+                        }
+                        
+                        // Search filter
+                        if (toolSearchQuery.trim()) {
+                          const toolDescription = tool.function?.description || '';
+                          const searchLower = toolSearchQuery.toLowerCase();
+                          return toolName.toLowerCase().includes(searchLower) || 
+                                 toolDescription.toLowerCase().includes(searchLower);
+                        }
+                        
+                        return true;
+                      }).length;
+                      
+                      const hasFilters = toolSearchQuery.trim() || selectedCategories.size < getAvailableCategories.length;
+                      return `${selectedTools.size} of ${fluentMcpAgent.abilities.length} tools selected${hasFilters ? ` (${filteredCount} shown)` : ''}`;
+                    })()}
                   </p>
                 </div>
               )}
