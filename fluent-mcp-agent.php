@@ -82,7 +82,9 @@ add_action('rest_api_init', function () {
     register_rest_route('fluent-mcp-agent/v1', '/api/chat', array(
         'methods'             => ['POST', 'OPTIONS'],
         'callback'            => 'fluent_mcp_agent_determine_provider_proxy_chat',
-        'permission_callback' => '__return_true',
+        'permission_callback' => function() {
+            return current_user_can('manage_options');
+        },
     ));
 });
 
@@ -179,7 +181,13 @@ function ability_to_tool( $ability ) {
         is_array($input_schema['properties']) &&
         !empty($input_schema['properties'])
     ) {
-        $parameters['properties'] = $input_schema['properties'];
+        // Ensure properties is an associative array (object when JSON encoded)
+        // Convert any numeric keys to string keys if needed
+        $properties = [];
+        foreach ($input_schema['properties'] as $key => $value) {
+            $properties[(string)$key] = $value;
+        }
+        $parameters['properties'] = $properties;
     }
 
     if (
@@ -212,29 +220,54 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
     }
 
     $body = $request->get_json_params();
+
     
     $is_tool_available = $body['functionCallingEnabled'];
 
     if($is_tool_available) {
 
         $tools = [];
-    
-        // First, add tools from request body if provided
+        $abilities = wp_get_abilities();
+
+        foreach($abilities as $ability) {
+            $tools[] = ability_to_tool($ability);
+        }
+
+
+        // If body contains tools, only keep those tools that match (by name) the tools present in the body
         if (!empty($body['tools']) && is_array($body['tools'])) {
-            $tools = array_merge($tools, $body['tools']);
+            $body_tool_names = array_map(function($t) {
+                // The tool name might be in 'function' or directly declared
+                if (isset($t['function']['name'])) {
+                    return $t['function']['name'];
+                } elseif (isset($t['name'])) {
+                    return $t['name'];
+                }
+                return null;
+            }, $body['tools']);
+            $body_tool_names = array_filter($body_tool_names);
+
+            // Only keep tools whose function name matches those specified in the body
+            $tools = array_filter($tools, function($tool) use ($body_tool_names) {
+                if (isset($tool['function']['name'])) {
+                    return in_array($tool['function']['name'], $body_tool_names, true);
+                }
+                return false;
+            });
+            // Re-index the array to maintain a plain array
+            $tools = array_values($tools);
         }
         
-        // Then, add WordPress abilities as tools
-        $wp_abilities = wp_get_abilities() ?? [];
-        if (!empty($wp_abilities) && is_array($wp_abilities)) {
-            foreach($wp_abilities as $ability) {
-                $tools[] = ability_to_tool($ability);
-            }
-        }
-
-        ds($tools);
-
+        // First, add tools from request body if provided
+        // if (!empty($body['tools']) && is_array($body['tools'])) {
+        //     $tools = $body['tools'];
+        // }
+        
     }
+
+    // ds($tools);
+
+
     
 
     $messages = array_merge(
@@ -253,6 +286,7 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             ];
         }, $body['messages'] ?? [])
     );
+
 
     // Set headers for streaming
     header('Content-Type: text/plain; charset=utf-8');
@@ -286,6 +320,7 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
         $streamingAllowed = true;
         $toolCallDetected = false;
         $toolCallData = null;
+        $nonce = wp_create_nonce('wp_rest');
 
         $ch = curl_init('http://localhost:11434/api/chat');
         curl_setopt_array($ch, [
@@ -293,7 +328,7 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             CURLOPT_POSTFIELDS => json_encode($payload),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => false,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$buffer, &$streamingAllowed, &$toolCallDetected, &$toolCallData) {
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$buffer, &$streamingAllowed, &$toolCallDetected, &$toolCallData, $nonce) {
                 foreach (explode("\n", $data) as $line) {
                     $line = trim($line);
                     if (!$line) continue;
@@ -370,27 +405,52 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
         
         try {
             if (function_exists('wp_get_ability')) {
-                $ability = wp_get_ability($toolName);
-                ds('ability');
-                ds($ability);
-                // Temporarily log in as admin for this request
-                $admin_user = get_users([
-                    'role'    => 'administrator',
-                    'number'  => 1,
-                    'orderby' => 'ID',
-                    'order'   => 'ASC'
-                ]);
-                if (!empty($admin_user) && isset($admin_user[0])) {
-                    wp_set_current_user($admin_user[0]->ID);
+
+                // if($current_user_can('manage_options')) {
+                //     // Temporarily log in as admin for this request
+                //     $admin_user = get_users([
+                //         'role'    => 'administrator',
+                //         'number'  => 1,
+                //         'orderby' => 'ID',
+                //         'order'   => 'ASC'
+                //     ]);
+                //     if (!empty($admin_user) && isset($admin_user[0])) {
+                //         wp_set_current_user($admin_user[0]->ID);
+                //     }
+
+                // }
+                ds('current user');
+
+                ds(get_current_user());
+                ds($nonce);
+
+                // If $request is available, extract the _wpnonce from the request headers and authenticate the user from the nonce
+                if (isset($nonce)) {
+
+                    if ($nonce) {
+                        $user_id = wp_validate_auth_cookie(false);
+                        if (!$user_id) {
+                            // Fallback to nonce user extraction
+                            $user_id = (int) wp_verify_nonce($nonce, 'wp_rest');
+                        }
+                        if ($user_id && get_user_by('id', $user_id)) {
+                            wp_set_current_user($user_id);
+                        }
+                    }
                 }
 
-                ds('admin user');
-                ds($admin_user);
+                ds('new current user');
+
+                ds(get_current_user());
+
+                $ability = wp_get_ability($toolName);
 
                 
+                
                 if ($ability) {
-                    ds('if ability found');
+
                     $toolResult = $ability->execute($toolArgs);
+
                 } else {
                     $toolResult = [
                         'error' => "Ability '$toolName' not found.",

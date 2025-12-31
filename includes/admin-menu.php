@@ -126,6 +126,8 @@ function fluent_mcp_agent_enqueue_assets($hook) {
         $tools[] = ability_to_tool($ability);
     }
 
+    ds($tools);
+
 
     // Localize script with enabled providers
     wp_localize_script(
