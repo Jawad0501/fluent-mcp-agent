@@ -47,12 +47,6 @@ npm install
 npm run build
 ```
 
-For development with hot-reload:
-
-```bash
-npm run dev
-```
-
 ### 3. Activate the Plugin
 
 1. Go to **WordPress Admin → Plugins**
