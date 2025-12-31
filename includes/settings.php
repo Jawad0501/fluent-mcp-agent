@@ -5,6 +5,120 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * --------------------------------------------------
+ * Admin CSS (ADDITIVE – does not replace inline styles)
+ * --------------------------------------------------
+ */
+add_action( 'admin_enqueue_scripts', function () {
+    ?>
+    <style>
+        .fluent-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+            cursor: pointer;
+        }
+
+        .fluent-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .fluent-switch .slider {
+            position: absolute;
+            inset: 0;
+            background-color: #8c8f94;
+            transition: .3s;
+            border-radius: 26px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .fluent-switch .slider::before {
+            content: '';
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #fff;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .fluent-switch input:checked + .slider {
+            background-color: #2271b1;
+        }
+
+        .fluent-switch input:checked + .slider::before {
+            transform: translateX(24px);
+        }
+
+        .fluent-provider-fields {
+            transition: opacity 0.3s ease;
+        }
+
+        .fluent-provider-fields.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+    (function() {
+        function toggleProviderFields(checkbox, fieldsContainer) {
+            if (checkbox.checked) {
+                fieldsContainer.classList.remove('disabled');
+            } else {
+                fieldsContainer.classList.add('disabled');
+            }
+        }
+
+        function initProviderToggles() {
+            // Ollama
+            const ollamaToggle = document.querySelector('input[name="fluent_mcp_agent_enable_ollama"]');
+            const ollamaFields = document.querySelector('.fluent-ollama-fields');
+            if (ollamaToggle && ollamaFields) {
+                toggleProviderFields(ollamaToggle, ollamaFields);
+                ollamaToggle.addEventListener('change', function() {
+                    toggleProviderFields(ollamaToggle, ollamaFields);
+                });
+            }
+
+            // OpenAI
+            const openaiToggle = document.querySelector('input[name="fluent_mcp_agent_enable_openai"]');
+            const openaiFields = document.querySelector('.fluent-openai-fields');
+            if (openaiToggle && openaiFields) {
+                toggleProviderFields(openaiToggle, openaiFields);
+                openaiToggle.addEventListener('change', function() {
+                    toggleProviderFields(openaiToggle, openaiFields);
+                });
+            }
+
+            // Anthropic
+            const anthropicToggle = document.querySelector('input[name="fluent_mcp_agent_enable_anthropic"]');
+            const anthropicFields = document.querySelector('.fluent-anthropic-fields');
+            if (anthropicToggle && anthropicFields) {
+                toggleProviderFields(anthropicToggle, anthropicFields);
+                anthropicToggle.addEventListener('change', function() {
+                    toggleProviderFields(anthropicToggle, anthropicFields);
+                });
+            }
+        }
+
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initProviderToggles);
+        } else {
+            initProviderToggles();
+        }
+    })();
+    </script>
+    <?php
+});
+
+/**
+ * --------------------------------------------------
  * Register Settings
  * --------------------------------------------------
  */
@@ -12,9 +126,6 @@ add_action( 'admin_init', 'fluent_mcp_agent_register_settings' );
 
 function fluent_mcp_agent_register_settings() {
 
-    /**
-     * Default provider
-     */
     register_setting(
         'fluent_mcp_agent_settings',
         'fluent_mcp_agent_default_provider',
@@ -25,16 +136,10 @@ function fluent_mcp_agent_register_settings() {
         ]
     );
 
-    /**
-     * Provider enable flags
-     */
     register_setting( 'fluent_mcp_agent_settings', 'fluent_mcp_agent_enable_ollama', [ 'default' => 0 ] );
     register_setting( 'fluent_mcp_agent_settings', 'fluent_mcp_agent_enable_openai', [ 'default' => 0 ] );
     register_setting( 'fluent_mcp_agent_settings', 'fluent_mcp_agent_enable_anthropic', [ 'default' => 0 ] );
 
-    /**
-     * Ollama
-     */
     register_setting(
         'fluent_mcp_agent_settings',
         'fluent_mcp_agent_ollama_url',
@@ -44,9 +149,6 @@ function fluent_mcp_agent_register_settings() {
         ]
     );
 
-    /**
-     * OpenAI
-     */
     register_setting(
         'fluent_mcp_agent_settings',
         'fluent_mcp_agent_openai_api_key',
@@ -55,9 +157,6 @@ function fluent_mcp_agent_register_settings() {
         ]
     );
 
-    /**
-     * Anthropic
-     */
     register_setting(
         'fluent_mcp_agent_settings',
         'fluent_mcp_agent_anthropic_api_key',
@@ -66,9 +165,6 @@ function fluent_mcp_agent_register_settings() {
         ]
     );
 
-    /**
-     * Section
-     */
     add_settings_section(
         'fluent_mcp_agent_section_providers',
         __( 'AI Providers', 'fluent-mcp-agent' ),
@@ -76,9 +172,6 @@ function fluent_mcp_agent_register_settings() {
         'fluent-mcp-agent-settings'
     );
 
-    /**
-     * Fields
-     */
     add_settings_field(
         'fluent_mcp_agent_default_provider',
         __( 'Default Provider', 'fluent-mcp-agent' ),
@@ -178,18 +271,16 @@ function fluent_mcp_agent_ollama_field_cb() {
                 <h3 style="margin: 0 0 4px; font-size: 16px; color: #1d2327; font-weight: 600;">Ollama (Local)</h3>
                 <p style="margin: 0; font-size: 13px; color: #646970;">Run AI models locally on your machine</p>
             </div>
-            <label style="position: relative; display: inline-block; width: 50px; height: 26px; cursor: pointer;">
+            <label class="fluent-switch">
                 <input type="checkbox"
                        name="fluent_mcp_agent_enable_ollama"
                        value="1"
-                       <?php checked( $enabled, 1 ); ?>
-                       style="opacity: 0; width: 0; height: 0;">
-                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: <?php echo $enabled ? '#2271b1' : '#8c8f94'; ?>; transition: .3s; border-radius: 26px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);"></span>
-                <span style="position: absolute; content: ''; height: 20px; width: 20px; left: <?php echo $enabled ? '27px' : '3px'; ?>; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+                       <?php checked( $enabled, 1 ); ?>>
+                <span class="slider"></span>
             </label>
         </div>
 
-        <div style="<?php echo !$enabled ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+        <div class="fluent-provider-fields fluent-ollama-fields <?php echo !$enabled ? 'disabled' : ''; ?>">
             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1d2327; font-size: 14px;">
                 API Endpoint URL
             </label>
@@ -220,18 +311,16 @@ function fluent_mcp_agent_openai_field_cb() {
                 <h3 style="margin: 0 0 4px; font-size: 16px; color: #1d2327; font-weight: 600;">ChatGPT (OpenAI)</h3>
                 <p style="margin: 0; font-size: 13px; color: #646970;">Access GPT-4, GPT-3.5 and other OpenAI models</p>
             </div>
-            <label style="position: relative; display: inline-block; width: 50px; height: 26px; cursor: pointer;">
+            <label class="fluent-switch">
                 <input type="checkbox"
                        name="fluent_mcp_agent_enable_openai"
                        value="1"
-                       <?php checked( $enabled, 1 ); ?>
-                       style="opacity: 0; width: 0; height: 0;">
-                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: <?php echo $enabled ? '#2271b1' : '#8c8f94'; ?>; transition: .3s; border-radius: 26px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);"></span>
-                <span style="position: absolute; content: ''; height: 20px; width: 20px; left: <?php echo $enabled ? '27px' : '3px'; ?>; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+                       <?php checked( $enabled, 1 ); ?>>
+                <span class="slider"></span>
             </label>
         </div>
 
-        <div style="<?php echo !$enabled ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+        <div class="fluent-provider-fields fluent-openai-fields <?php echo !$enabled ? 'disabled' : ''; ?>">
             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1d2327; font-size: 14px;">
                 API Key
             </label>
@@ -262,18 +351,16 @@ function fluent_mcp_agent_anthropic_field_cb() {
                 <h3 style="margin: 0 0 4px; font-size: 16px; color: #1d2327; font-weight: 600;">Claude (Anthropic)</h3>
                 <p style="margin: 0; font-size: 13px; color: #646970;">Access Claude 3 Opus, Sonnet, and Haiku models</p>
             </div>
-            <label style="position: relative; display: inline-block; width: 50px; height: 26px; cursor: pointer;">
+            <label class="fluent-switch">
                 <input type="checkbox"
                        name="fluent_mcp_agent_enable_anthropic"
                        value="1"
-                       <?php checked( $enabled, 1 ); ?>
-                       style="opacity: 0; width: 0; height: 0;">
-                <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: <?php echo $enabled ? '#2271b1' : '#8c8f94'; ?>; transition: .3s; border-radius: 26px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);"></span>
-                <span style="position: absolute; content: ''; height: 20px; width: 20px; left: <?php echo $enabled ? '27px' : '3px'; ?>; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+                       <?php checked( $enabled, 1 ); ?>>
+                <span class="slider"></span>
             </label>
         </div>
 
-        <div style="<?php echo !$enabled ? 'opacity: 0.5; pointer-events: none;' : ''; ?>">
+        <div class="fluent-provider-fields fluent-anthropic-fields <?php echo !$enabled ? 'disabled' : ''; ?>">
             <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #1d2327; font-size: 14px;">
                 API Key
             </label>

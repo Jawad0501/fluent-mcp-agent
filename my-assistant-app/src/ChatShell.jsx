@@ -40,6 +40,18 @@ export default function ChatShell() {
   const [providerDropdownOpen, setProviderDropdownOpen] = React.useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = React.useState(false);
 
+  // Function Calling Settings State
+  const [functionCallingEnabled, setFunctionCallingEnabled] = React.useState(true);
+
+  // Selected Tools State - initialize with all abilities selected by default
+  const [selectedTools, setSelectedTools] = React.useState(() => {
+    if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
+      const toolNames = fluentMcpAgent.abilities.map(tool => tool.function?.name).filter(Boolean);
+      return new Set(toolNames);
+    }
+    return new Set();
+  });
+
   // RAG Settings State
   const [ragSettings, setRagSettings] = React.useState({
     enabled: false,
@@ -67,10 +79,49 @@ export default function ChatShell() {
   // Create runtime for assistant-ui with updated body
   const runtime = useDataStreamRuntime({
     api: "/api/chat",
+    headers: {
+      "X-WP-Nonce":
+        typeof fluentMcpAgent !== "undefined"
+          ? fluentMcpAgent.nonce
+          : undefined
+    },
     body: {
       provider: selectedProvider,
       model: selectedModel,
-      ragSettings: ragSettings.enabled ? ragSettings : undefined
+      ragSettings: ragSettings.enabled ? ragSettings : undefined,
+      functionCallingEnabled: functionCallingEnabled,
+      tools: functionCallingEnabled ? (() => {
+        const tools = [];
+        
+        // Add client-side tools
+        tools.push(
+          {
+            type: "function",
+            function: {
+              name: "WaitUntilToolExecuted",
+              description: "Shows tool execution progress"
+            }
+          },
+          {
+            type: "function",
+            function: {
+              name: "ConfirmToolExecution",
+              description: "Confirms tool execution"
+            }
+          }
+        );
+        
+        // Add selected abilities from server
+        if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
+          fluentMcpAgent.abilities.forEach(tool => {
+            if (tool.function?.name && selectedTools.has(tool.function.name)) {
+              tools.push(tool);
+            }
+          });
+        }
+        
+        return tools.length > 0 ? tools : undefined;
+      })() : undefined
     },
     tools: {
         WaitUntilToolExecuted: {
@@ -132,6 +183,31 @@ export default function ChatShell() {
       ...prev,
       [key]: value
     }));
+  };
+
+  const handleToolToggle = (toolName) => {
+    setSelectedTools(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(toolName)) {
+        newSet.delete(toolName);
+      } else {
+        newSet.add(toolName);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAllTools = () => {
+    if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
+      const allToolNames = fluentMcpAgent.abilities
+        .map(tool => tool.function?.name)
+        .filter(Boolean);
+      setSelectedTools(new Set(allToolNames));
+    }
+  };
+
+  const handleDeselectAllTools = () => {
+    setSelectedTools(new Set());
   };
 
   return (
@@ -565,6 +641,223 @@ export default function ChatShell() {
                 padding: "20px",
               }}
             >
+              {/* Function Calling Settings Section */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid #e5e7eb'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    color: '#111827',
+                  }}>
+                    <Layers size={16} />
+                    Function Calling
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={functionCallingEnabled}
+                      onChange={(e) => setFunctionCallingEnabled(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: functionCallingEnabled ? '#2271b1' : '#8c8f94',
+                      transition: '.3s',
+                      borderRadius: '24px'
+                    }}></span>
+                    <span style={{
+                      position: 'absolute',
+                      content: '',
+                      height: '18px',
+                      width: '18px',
+                      left: functionCallingEnabled ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      transition: '.3s',
+                      borderRadius: '50%'
+                    }}></span>
+                  </label>
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
+                  Enable function calling to allow the AI to use tools and abilities. When disabled, the AI will only respond with text.
+                </p>
+              </div>
+
+              {/* Available Tools Section - Only show when function calling is enabled */}
+              {functionCallingEnabled && typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length > 0 && (
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '12px',
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      color: '#111827',
+                    }}>
+                      <Brain size={16} />
+                      Available Tools
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={handleSelectAllTools}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          color: '#2271b1',
+                          background: 'transparent',
+                          border: '1px solid #2271b1',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 500
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f0f6fc';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={handleDeselectAllTools}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          color: '#6b7280',
+                          background: 'transparent',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 500
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{
+                    height: '200px',
+                    overflowY: 'auto',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    padding: '8px'
+                  }}>
+                    {fluentMcpAgent.abilities.map((tool, index) => {
+                      const toolName = tool.function?.name;
+                      const toolDescription = tool.function?.description || 'No description';
+                      const isSelected = toolName ? selectedTools.has(toolName) : false;
+                      
+                      if (!toolName) return null;
+                      
+                      return (
+                        <div
+                          key={toolName}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            padding: '10px',
+                            marginBottom: index < fluentMcpAgent.abilities.length - 1 ? '8px' : 0,
+                            borderRadius: '4px',
+                            backgroundColor: isSelected ? '#f0f6fc' : '#ffffff',
+                            border: `1px solid ${isSelected ? '#2271b1' : '#e5e7eb'}`,
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <label style={{ 
+                            position: 'relative', 
+                            display: 'inline-block', 
+                            width: '36px', 
+                            height: '20px', 
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            marginTop: '2px'
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToolToggle(toolName)}
+                              style={{ opacity: 0, width: 0, height: 0 }}
+                            />
+                            <span style={{
+                              position: 'absolute',
+                              cursor: 'pointer',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundColor: isSelected ? '#2271b1' : '#d1d5db',
+                              transition: '.2s',
+                              borderRadius: '20px'
+                            }}></span>
+                            <span style={{
+                              position: 'absolute',
+                              height: '16px',
+                              width: '16px',
+                              left: isSelected ? '18px' : '2px',
+                              bottom: '2px',
+                              backgroundColor: 'white',
+                              transition: '.2s',
+                              borderRadius: '50%'
+                            }}></span>
+                          </label>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              color: '#111827',
+                              marginBottom: '4px'
+                            }}>
+                              {toolName}
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              lineHeight: '1.4'
+                            }}>
+                              {toolDescription}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6b7280', lineHeight: '1.4' }}>
+                    {selectedTools.size} of {fluentMcpAgent.abilities.length} tools selected
+                  </p>
+                </div>
+              )}
+
               {/* RAG Settings Section */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{

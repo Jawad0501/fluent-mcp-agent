@@ -16,6 +16,7 @@ add_action('admin_menu', function () {
 
 
 
+
 add_action('admin_enqueue_scripts', 'fluent_mcp_agent_enqueue_assets', 999);
 function fluent_mcp_agent_enqueue_assets($hook) {
 
@@ -119,6 +120,12 @@ function fluent_mcp_agent_enqueue_assets($hook) {
         }
     }
 
+    $abilities = wp_get_abilities();
+    $tools = [];
+    foreach($abilities as $ability) {
+        $tools[] = ability_to_tool($ability);
+    }
+
 
     // Localize script with enabled providers
     wp_localize_script(
@@ -130,7 +137,9 @@ function fluent_mcp_agent_enqueue_assets($hook) {
             'availableModels' => $available_models,
             'openaiUrl' => get_option('fluent_mcp_agent_openai_url'),
             'claudeUrl' => get_option('fluent_mcp_agent_anthropic_url'),
-            'ollamaUrl' => get_option('fluent_mcp_agent_ollama_url')
+            'ollamaUrl' => get_option('fluent_mcp_agent_ollama_url'),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'abilities' => $tools
         ]
     );
 }

@@ -202,7 +202,7 @@ function ability_to_tool( $ability ) {
  * Streaming proxy for Ollama
  */
 function ollama_proxy_chat(\WP_REST_Request $request, $model) {
-    
+
     // Ensure current user context is set for REST API
     if (!get_current_user_id()) {
         $current_user = wp_get_current_user();
@@ -212,14 +212,30 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
     }
 
     $body = $request->get_json_params();
-    $tools = [];
-    $wp_abilities = wp_get_abilities() ?? [];
+    
+    $is_tool_available = $body['functionCallingEnabled'];
 
-    if (!empty($wp_abilities) && is_array($wp_abilities)) {
-        foreach($wp_abilities as $ability) {
-            $tools[] = ability_to_tool($ability);
+    if($is_tool_available) {
+
+        $tools = [];
+    
+        // First, add tools from request body if provided
+        if (!empty($body['tools']) && is_array($body['tools'])) {
+            $tools = array_merge($tools, $body['tools']);
         }
+        
+        // Then, add WordPress abilities as tools
+        $wp_abilities = wp_get_abilities() ?? [];
+        if (!empty($wp_abilities) && is_array($wp_abilities)) {
+            foreach($wp_abilities as $ability) {
+                $tools[] = ability_to_tool($ability);
+            }
+        }
+
+        ds($tools);
+
     }
+    
 
     $messages = array_merge(
         [
@@ -260,8 +276,11 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             'model' => $model,
             'messages' => $messages,
             'stream' => true,
-            'tools' => $tools
         ];
+
+        if(isset($tools)) {
+            $payload['tools'] = $tools;
+        }
 
         $buffer = '';
         $streamingAllowed = true;
@@ -281,6 +300,11 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
 
                     $json = json_decode($line, true);
                     if (!$json) continue;
+
+                    if($json['error']) {
+                        echo "3:" . json_encode($json['error']) . "\n";
+                        flush();
+                    }
 
                     $content = $json['message']['content'] ?? '';
                     $done = !empty($json['done']);
@@ -347,6 +371,8 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
         try {
             if (function_exists('wp_get_ability')) {
                 $ability = wp_get_ability($toolName);
+                ds('ability');
+                ds($ability);
                 // Temporarily log in as admin for this request
                 $admin_user = get_users([
                     'role'    => 'administrator',
@@ -358,8 +384,12 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
                     wp_set_current_user($admin_user[0]->ID);
                 }
 
+                ds('admin user');
+                ds($admin_user);
+
                 
                 if ($ability) {
+                    ds('if ability found');
                     $toolResult = $ability->execute($toolArgs);
                 } else {
                     $toolResult = [
@@ -412,6 +442,7 @@ function openai_proxy_chat(\WP_REST_Request $request, $model) {
 
     $body_arr = $request->get_json_params();
 
+
     $openai_url = get_option(
         'fluent_mcp_agent_openai_url',
         'https://api.openai.com/v1/chat/completions'
@@ -422,6 +453,27 @@ function openai_proxy_chat(\WP_REST_Request $request, $model) {
         echo "2:" . json_encode(['error' => 'OpenAI API key missing']) . "\n";
         flush();
         exit;
+    }
+
+    // Merge tools from request body with WordPress abilities
+    $tools = [];
+    
+    // First, add tools from request body if provided
+    if (!empty($body_arr['tools']) && is_array($body_arr['tools'])) {
+        $tools = array_merge($tools, $body_arr['tools']);
+    }
+    
+    // Then, add WordPress abilities as tools
+    $wp_abilities = wp_get_abilities() ?? [];
+    if (!empty($wp_abilities) && is_array($wp_abilities)) {
+        foreach($wp_abilities as $ability) {
+            $tools[] = ability_to_tool($ability);
+        }
+    }
+    
+    // Set tools in body if we have any
+    if (!empty($tools)) {
+        $body_arr['tools'] = $tools;
     }
 
     // Force streaming
