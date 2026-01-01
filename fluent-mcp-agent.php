@@ -136,34 +136,267 @@ function fluent_mcp_agent_determine_provider_proxy_chat(\WP_REST_Request $reques
 use WP\MCP\Core\McpAdapter;
 use WP\MCP\Abilities\ExecuteAbilityAbility;
 
-function generate_agent_knowledge(): string {
 
-    $site_name   = get_bloginfo( 'name' );
-    $site_desc   = get_bloginfo( 'description' );
-    $admin_email = get_bloginfo( 'admin_email' );
-    $site_url    = home_url();
+function generate_tools_knowledge(): string {
 
     $knowledge = [];
+
+    $knowledge[] = "=== MCP TOOLS & ABILITIES (AUTHORITATIVE) ===";
+    $knowledge[] = "This section defines the ONLY tools you are allowed to use.";
+    $knowledge[] = "If a tool is not listed here, it DOES NOT EXIST.";
+    $knowledge[] = "You must NEVER guess, invent, or assume tools.";
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * META ABILITIES
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== META ABILITIES (SYSTEM LEVEL) ===";
+    $knowledge[] = "";
+
+    $knowledge[] = "mcp-adapter/discover-abilities";
+    $knowledge[] = "- Purpose: List all registered abilities";
+    $knowledge[] = "- Parameters: none";
+    $knowledge[] = "- Use ONLY when the user explicitly asks what tools exist";
+    $knowledge[] = "";
+
+    $knowledge[] = "mcp-adapter/get-ability-info";
+    $knowledge[] = "- Purpose: Inspect schema of a known ability";
+    $knowledge[] = "- Parameters: ability_name (string, required)";
+    $knowledge[] = "- Use BEFORE calling an unfamiliar ability";
+    $knowledge[] = "";
+
+    $knowledge[] = "mcp-adapter/execute-ability";
+    $knowledge[] = "- Purpose: Execute an ability indirectly";
+    $knowledge[] = "- Use ONLY if direct invocation is unavailable";
+    $knowledge[] = "- Never use by default";
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * REGISTERED ABILITIES (LIVE SNAPSHOT)
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== REGISTERED ABILITIES (LIVE SNAPSHOT) ===";
+    $knowledge[] = "The following is the COMPLETE list of currently registered abilities.";
+    $knowledge[] = "";
+
+    $abilities = wp_get_abilities();
+
+    if (empty($abilities)) {
+        $knowledge[] = "No abilities are currently registered.";
+        return implode("\n", $knowledge);
+    }
+
+    $grouped = [];
+
+    foreach ($abilities as $ability) {
+        $grouped[$ability->get_category()][] = $ability;
+    }
+
+    foreach ($grouped as $category => $items) {
+
+        $knowledge[] = "CATEGORY: " . strtoupper($category);
+        $knowledge[] = "";
+
+        foreach ($items as $ability) {
+
+            $knowledge[] = "Tool Name: " . $ability->get_name();
+            $knowledge[] = "Description: " . $ability->get_description();
+
+            $schema = $ability->get_input_schema();
+            if (!empty($schema['properties'])) {
+                $knowledge[] = "Parameters:";
+                foreach ($schema['properties'] as $key => $info) {
+                    $required = in_array($key, $schema['required'] ?? [], true);
+                    $knowledge[] = "- {$key}" . ($required ? " (REQUIRED)" : " (optional)");
+                }
+            } else {
+                $knowledge[] = "Parameters: none";
+            }
+
+            $knowledge[] = "";
+        }
+    }
+
+    /*
+     * --------------------------------------------------
+     * ABSOLUTE TOOL RULES
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== TOOL USAGE RULES (MANDATORY) ===";
+    $knowledge[] = "- Never call tools that do not exist";
+    $knowledge[] = "- Never re-label tools under different plugins";
+    $knowledge[] = "- Never retry failed tools automatically";
+    $knowledge[] = "- Never apologize more than once";
+    $knowledge[] = "- If no tool exists, say so clearly and stop";
+    $knowledge[] = "";
+
+    return implode("\n", $knowledge);
+}
+
+
+/**
+ * --------------------------------------------------
+ * AGENT / SITE KNOWLEDGE
+ * --------------------------------------------------
+ */
+function generate_agent_knowledge(): string {
+
+    if (!function_exists('get_bloginfo')) {
+        return '';
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    require_once ABSPATH . 'wp-admin/includes/update.php';
+    require_once ABSPATH . 'wp-admin/includes/theme.php';
+
+    $knowledge = [];
+
+    /*
+     * --------------------------------------------------
+     * AUTHORITATIVE SNAPSHOT
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== AUTHORITATIVE SITE SNAPSHOT ===";
+    $knowledge[] = "This is a COMPLETE, CURRENT snapshot of this WordPress site.";
+    $knowledge[] = "This data is GROUND TRUTH.";
+    $knowledge[] = "Do NOT provide generic WordPress guidance.";
+    $knowledge[] = "Do NOT suggest dashboards, plugins, WP-CLI, or manual steps.";
+    $knowledge[] = "";
 
     /*
      * --------------------------------------------------
      * AGENT IDENTITY
      * --------------------------------------------------
      */
-    $knowledge[] = "You are an intelligent MCP AI agent embedded inside a WordPress website.";
-    $knowledge[] = "You can perform actions using WordPress abilities exposed via MCP tools.";
+    $knowledge[] = "You are an MCP AI agent embedded inside this WordPress site.";
+    $knowledge[] = "Answer questions directly using this snapshot whenever possible.";
     $knowledge[] = "";
-    $knowledge[] = "This site’s info:";
-    $knowledge[] = "- Site Name: {$site_name}";
-    $knowledge[] = "- Site URL: {$site_url}";
-    if ( $site_desc ) {
-        $knowledge[] = "- Site Description: {$site_desc}";
+
+    /*
+     * --------------------------------------------------
+     * SITE INFO
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== SITE INFORMATION ===";
+    $knowledge[] = "- Name: " . get_bloginfo('name');
+    $knowledge[] = "- URL: " . home_url();
+    $knowledge[] = "- Description: " . get_bloginfo('description');
+    $knowledge[] = "- Admin Email: " . get_bloginfo('admin_email');
+    $knowledge[] = "- WordPress Version: " . get_bloginfo('version');
+    $knowledge[] = "- Locale: " . get_locale();
+    $knowledge[] = "- Multisite: " . (is_multisite() ? 'Yes' : 'No');
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * ENVIRONMENT & DEBUG
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== ENVIRONMENT & DEBUG ===";
+    $knowledge[] = "- PHP Version: " . PHP_VERSION;
+    $knowledge[] = "- WP_DEBUG: " . ((defined('WP_DEBUG') && WP_DEBUG) ? 'ENABLED' : 'DISABLED');
+    $knowledge[] = "- WP_DEBUG_LOG: " . ((defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) ? 'ENABLED' : 'DISABLED');
+    $knowledge[] = "- WP_DEBUG_DISPLAY: " . ((defined('WP_DEBUG_DISPLAY') && WP_DEBUG_DISPLAY) ? 'ENABLED' : 'DISABLED');
+
+    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+        $knowledge[] = "- Debug Log Path: " . (is_string(WP_DEBUG_LOG) ? WP_DEBUG_LOG : WP_CONTENT_DIR . '/debug.log');
     }
-    $knowledge[] = "- Admin Contact: {$admin_email}";
+
+    $knowledge[] = "- Environment Type: " . (defined('WP_ENVIRONMENT_TYPE') ? WP_ENVIRONMENT_TYPE : 'Not defined');
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * PLUGINS (FINAL AUTHORITY)
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== INSTALLED PLUGINS (FINAL AUTHORITY) ===";
+
+    $plugins        = get_plugins();
+    $active         = get_option('active_plugins', []);
+    $updates        = get_site_transient('update_plugins');
+
+    foreach ($plugins as $file => $plugin) {
+
+        $line = "- {$plugin['Name']} (v{$plugin['Version']})";
+        $line .= in_array($file, $active, true) ? " [ACTIVE]" : " [INACTIVE]";
+
+        if (isset($updates->response[$file])) {
+            $line .= " [UPDATE → {$updates->response[$file]->new_version}]";
+        }
+
+        $knowledge[] = $line;
+    }
+
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * THEME
+     * --------------------------------------------------
+     */
+    $theme = wp_get_theme();
+
+    $knowledge[] = "=== ACTIVE THEME ===";
+    $knowledge[] = "- Name: " . $theme->get('Name');
+    $knowledge[] = "- Version: " . $theme->get('Version');
+    $knowledge[] = "- Slug: " . $theme->get_stylesheet();
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * MCP CONTEXT
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== MCP STATUS ===";
+    if (class_exists('\WP\MCP\Core\McpAdapter')) {
+        $knowledge[] = "- MCP Adapter: ACTIVE";
+        if (defined('\WP\MCP\Core\McpAdapter::VERSION')) {
+            $knowledge[] = "- MCP Version: " . constant('\WP\MCP\Core\McpAdapter::VERSION');
+        }
+    } else {
+        $knowledge[] = "- MCP Adapter: NOT ACTIVE";
+    }
+
+    $knowledge[] = "";
+
+    /*
+     * --------------------------------------------------
+     * ANSWERING RULES
+     * --------------------------------------------------
+     */
+    $knowledge[] = "=== ANSWERING RULES ===";
+    $knowledge[] = "- If information exists above, answer directly.";
+    $knowledge[] = "- Never suggest manual steps.";
+    $knowledge[] = "- Never hallucinate plugins, tools, or data.";
+    $knowledge[] = "- Final responses MUST be plain text.";
     $knowledge[] = "";
 
     return implode("\n", $knowledge);
+}
 
+
+function fluent_is_tool_failure($toolResult): bool {
+    if ($toolResult === null) {
+        return true;
+    }
+
+    if (is_array($toolResult) && isset($toolResult['error'])) {
+        return true;
+    }
+
+    return false;
+}
+
+function fluent_stringify_tool_error($toolResult): string {
+    if (is_array($toolResult) && isset($toolResult['error'])) {
+        return (string) $toolResult['error'];
+    }
+
+    return 'Unknown error occurred while executing the tool.';
 }
 
 function ability_to_tool( $ability ) {
@@ -265,16 +498,19 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
         
     }
 
-    // ds($tools);
 
 
-    
+    $content = generate_agent_knowledge();
+
+    if($tools) {
+        $content .= generate_tools_knowledge();
+    }
 
     $messages = array_merge(
         [
             [
                 'role' => 'system',
-                'content' => generate_agent_knowledge()
+                'content' => $content
             ],
         ],
         array_map(function ($m) {
@@ -361,15 +597,47 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
 
                     if ($done) {
                         $final = trim($buffer);
-
+                        
+                        ds('raw final');
+                        ds($final);
+                    
+                        // ✅ EXTRACT JSON FROM MARKDOWN CODE BLOCKS OR MIXED CONTENT
+                        // Pattern 1: ```json ... ``` or ``` ... ```
+                        if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $final, $matches)) {
+                            $final = $matches[1];
+                            ds('extracted from markdown block');
+                        }
+                        // Pattern 2: Text followed by JSON (take only the JSON part)
+                        elseif (preg_match('/\{[^{]*"name"\s*:\s*"[^"]+"/s', $final, $matches)) {
+                            // Find the last occurrence of { followed by "name":
+                            if (preg_match_all('/(\{(?:[^{}]|(?1))*\})/s', $final, $all_matches)) {
+                                // Take the last JSON object
+                                $json_candidates = $all_matches[0];
+                                foreach (array_reverse($json_candidates) as $candidate) {
+                                    $test = json_decode($candidate, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && isset($test['name'])) {
+                                        $final = $candidate;
+                                        ds('extracted JSON from mixed content');
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        $final = trim($final);
+                        
+                        ds('cleaned final');
+                        ds($final);
+                    
                         // Check for tool call
                         if ($final !== '' && $final[0] === '{') {
                             $parsed = json_decode($final, true);
-
+                    
                             if (json_last_error() === JSON_ERROR_NONE && isset($parsed['name'])) {
                                 $toolCallDetected = true;
                                 $toolCallData = $parsed;
-                            }
+                                ds('tool call detected successfully');
+                            } 
                         }
                     }
                 }
@@ -395,6 +663,15 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             break;
         }
 
+        if ($iteration >= $maxIterations) {
+            echo "0:" . json_encode(
+                "Sorry — I couldn't complete this request due to repeated errors. " .
+                "Please try again or rephrase your request."
+            ) . "\n";
+            flush();
+            exit;
+        }
+
         // Process tool call
         $toolName = $toolCallData['name'];
         $toolArgs = $toolCallData['arguments'] ?? [];
@@ -405,63 +682,32 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
         
         try {
             if (function_exists('wp_get_ability')) {
-
-                // if($current_user_can('manage_options')) {
-                //     // Temporarily log in as admin for this request
-                //     $admin_user = get_users([
-                //         'role'    => 'administrator',
-                //         'number'  => 1,
-                //         'orderby' => 'ID',
-                //         'order'   => 'ASC'
-                //     ]);
-                //     if (!empty($admin_user) && isset($admin_user[0])) {
-                //         wp_set_current_user($admin_user[0]->ID);
-                //     }
-
-                // }
-                ds('current user');
-
-                ds(get_current_user());
-                ds($nonce);
-
-                // If $request is available, extract the _wpnonce from the request headers and authenticate the user from the nonce
-                if (isset($nonce)) {
-
-                    if ($nonce) {
-                        $user_id = wp_validate_auth_cookie(false);
-                        if (!$user_id) {
-                            // Fallback to nonce user extraction
-                            $user_id = (int) wp_verify_nonce($nonce, 'wp_rest');
-                        }
-                        if ($user_id && get_user_by('id', $user_id)) {
-                            wp_set_current_user($user_id);
-                        }
-                    }
-                }
-
-                ds('new current user');
-
-                ds(get_current_user());
-
+                
                 $ability = wp_get_ability($toolName);
 
-                
-                
+                ds('ability');
+                ds($ability);
+    
                 if ($ability) {
-
+                    if (is_array($toolArgs) && empty($toolArgs)) {
+                        $toolArgs = null;
+                    }
+    
                     $toolResult = $ability->execute($toolArgs);
-
+                    
+                    if (is_wp_error($toolResult)) {
+                        $toolResult = [
+                            'error' => $toolResult->get_error_message(),
+                            'error_code' => $toolResult->get_error_code(),
+                            'toolName' => $toolName
+                        ];
+                    }
                 } else {
                     $toolResult = [
                         'error' => "Ability '$toolName' not found.",
                         'toolName' => $toolName
                     ];
                 }
-            } else {
-                $toolResult = [
-                    'error' => 'wp_get_ability function not found.',
-                    'toolName' => $toolName
-                ];
             }
         } catch (\Throwable $e) {
             $toolResult = [
@@ -470,11 +716,29 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             ];
         }
 
-        // Send tool result back to client
-        echo "3:" . json_encode([
-            "toolCallId" => $toolId,
-            "result" => $toolResult
-        ]) . "\n";
+        ds('tool result');
+        ds($toolResult);
+
+        // Ensure tool result is always a valid array
+        if (is_wp_error($toolResult)) {
+            $toolResult = [
+                'error' => $toolResult->get_error_message(),
+                'error_code' => $toolResult->get_error_code(),
+                'toolName' => $toolName
+            ];
+        }
+
+        if (is_array($toolResult)) {
+            if (isset($toolResult['error'])) {
+                $errorText = $toolResult['error'];
+            } else {
+                $errorText = json_encode($toolResult, JSON_PRETTY_PRINT);
+            }
+        } else {
+            $errorText = (string) $toolResult;
+        }
+
+        echo "3:" . json_encode($errorText) . "\n";
         flush();
 
         // Add tool call and result to messages for next iteration
@@ -487,6 +751,38 @@ function ollama_proxy_chat(\WP_REST_Request $request, $model) {
             'role' => 'tool',
             'content' => json_encode($toolResult)
         ];
+
+        if (fluent_is_tool_failure($toolResult)) {
+
+            $errorMessage = fluent_stringify_tool_error($toolResult);
+        
+            $messages[] = [
+                'role' => 'system',
+                'content' =>
+                    "The previous tool call FAILED.\n" .
+                    "Reason: {$errorMessage}\n\n" .
+                    "INSTRUCTIONS:\n" .
+                    "- Apologize briefly to the user\n" .
+                    "- Do NOT repeat the same tool call\n" .
+                    "- Try a DIFFERENT ability if possible\n" .
+                    "- If no other ability is suitable, explain the limitation clearly\n" .
+                    "- The FINAL response MUST be plain text\n" .
+                    "- Do NOT output JSON"
+            ];
+        
+        } else {
+        
+            // ✅ Tool succeeded — force final text response
+            $messages[] = [
+                'role' => 'system',
+                'content' =>
+                    "The previous tool call SUCCEEDED.\n" .
+                    "Use the tool result to answer the user.\n" .
+                    "Respond with a clear, helpful explanation in TEXT ONLY.\n" .
+                    "Do NOT call any more tools.\n" .
+                    "Do NOT output JSON."
+            ];
+        }
 
         // Continue loop to get final response from AI
     }
@@ -825,7 +1121,7 @@ add_action('admin_init', function () {
 if ( is_admin() ) {
     require_once FLUENT_MCP_AGENT_PATH . 'includes/admin-menu.php';
     require_once FLUENT_MCP_AGENT_PATH . 'includes/settings.php';
-    require_once FLUENT_MCP_AGENT_PATH . 'includes/mcp-servers.php';
+    require_once FLUENT_MCP_AGENT_PATH . 'includes/usage_guide.php';
 }
 
 // Shared / backend logic
