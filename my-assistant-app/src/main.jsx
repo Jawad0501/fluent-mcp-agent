@@ -4,7 +4,7 @@ import "./index.scss";
 
 import React from "react";
 import ReactDOM from "react-dom/client";
-import ChatShell from "./ChatShell";
+import ChatShell from "./oldChatShell";
 import AssistantModal from "./AssistantModal";
 
 const rootEl = document.getElementById("fluent-assistant-chat-root");

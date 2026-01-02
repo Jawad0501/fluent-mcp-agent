@@ -213,39 +213,31 @@ export default function ChatShell() {
         );
         
         // Add selected abilities from server
-        if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
-          fluentMcpAgent.abilities.forEach(tool => {
-            if (tool.function?.name && selectedTools.has(tool.function.name)) {
-              // Ensure properties is an object, not an array
-              const normalizedTool = { ...tool };
-              if (normalizedTool.function?.parameters?.properties) {
-                const props = normalizedTool.function.parameters.properties;
-                // If properties is an array, convert it to an object
-                if (Array.isArray(props)) {
-                  normalizedTool.function.parameters.properties = {};
-                } else if (props && typeof props === 'object') {
-                  // Ensure it's a plain object, not an array-like object
-                  normalizedTool.function.parameters.properties = { ...props };
-                }
-              } else if (normalizedTool.function?.parameters && !normalizedTool.function.parameters.properties) {
-                // Ensure properties exists as an object
-                normalizedTool.function.parameters.properties = {};
-              }
-              tools.push(normalizedTool);
-            }
-          });
-        }
+        // if (typeof fluentMcpAgent !== "undefined" && fluentMcpAgent.abilities?.length) {
+        //   fluentMcpAgent.abilities.forEach(tool => {
+        //     if (tool.function?.name && selectedTools.has(tool.function.name)) {
+        //       // Ensure properties is an object, not an array
+        //       const normalizedTool = { ...tool };
+        //       if (normalizedTool.function?.parameters?.properties) {
+        //         const props = normalizedTool.function.parameters.properties;
+        //         // If properties is an array, convert it to an object
+        //         if (Array.isArray(props)) {
+        //           normalizedTool.function.parameters.properties = {};
+        //         } else if (props && typeof props === 'object') {
+        //           // Ensure it's a plain object, not an array-like object
+        //           normalizedTool.function.parameters.properties = { ...props };
+        //         }
+        //       } else if (normalizedTool.function?.parameters && !normalizedTool.function.parameters.properties) {
+        //         // Ensure properties exists as an object
+        //         normalizedTool.function.parameters.properties = {};
+        //       }
+        //       tools.push(normalizedTool);
+        //     }
+        //   });
+        // }
         
         return tools.length > 0 ? tools : undefined;
       })() : undefined
-    },
-    tools: {
-        WaitUntilToolExecuted: {
-            description: "Shows tool execution progress"
-        },
-        ConfirmToolExecution: {
-            description: "Confirms tool execution"
-        }
     },
     onError(error) {
       console.error("Assistant stream error:", error);
@@ -458,6 +450,7 @@ export default function ChatShell() {
 
               {/* ThreadList - Always show */}
               <div style={{ flex: 1 }}>
+                <ConfirmToolExecution />
                 <ThreadList />
               </div>
             </div>
@@ -1301,7 +1294,7 @@ export default function ChatShell() {
               )}
 
               {/* RAG Settings Section */}
-              <div style={{ marginBottom: '24px' }}>
+              {/* <div style={{ marginBottom: '24px' }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1354,7 +1347,6 @@ export default function ChatShell() {
                 </div>
 
                 <div style={{ opacity: ragSettings.enabled ? 1 : 0.5, pointerEvents: ragSettings.enabled ? 'auto' : 'none' }}>
-                  {/* Chunk Size */}
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1387,7 +1379,7 @@ export default function ChatShell() {
                     </p>
                   </div>
 
-                  {/* Chunk Overlap */}
+
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1420,7 +1412,7 @@ export default function ChatShell() {
                     </p>
                   </div>
 
-                  {/* Top K */}
+
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1453,7 +1445,7 @@ export default function ChatShell() {
                     </p>
                   </div>
 
-                  {/* Similarity Threshold */}
+ 
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1489,7 +1481,7 @@ export default function ChatShell() {
                     </p>
                   </div>
 
-                  {/* Embedding Model */}
+
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1523,7 +1515,7 @@ export default function ChatShell() {
                     </select>
                   </div>
 
-                  {/* Vector Store */}
+
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{
                       display: 'block',
@@ -1558,7 +1550,7 @@ export default function ChatShell() {
                     </select>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
